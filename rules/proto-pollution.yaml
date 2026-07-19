@@ -1,0 +1,11 @@
+class: proto-pollution
+severity: medium
+detector: proto-pollution
+dangerousKeys: [__proto__, constructor, prototype]
+sinks:
+  calls: [setPrototypeOf]
+notes: >
+  Flags recursive-merge patterns (for..in copying src into dst), computed
+  nested member assignment with variable keys (dst[k1][k2] = v), and use of
+  dangerous keys. Heuristic — the LLM analyzer confirms reachability from
+  untrusted input.

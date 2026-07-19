@@ -1,0 +1,17 @@
+class: open-redirect
+severity: medium
+detector: sink-flow
+sinks:
+  properties: [href]                 # location.href = x  /  anchor.href = x
+  calls: []
+  memberCalls: [assign, replace, open]   # location.assign(x) / location.replace(x) / window.open(x)
+sources:
+  memberPaths:
+    - location.href
+    - location.hash
+    - location.search
+    - document.referrer
+  eventProps: [data]
+sanitizers:
+  calls: []
+  properties: []

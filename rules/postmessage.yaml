@@ -1,0 +1,8 @@
+class: postmessage
+severity: medium
+detector: postmessage
+notes: >
+  Flags window message listeners — addEventListener('message', handler) or
+  onmessage = handler — whose handler does not check event.origin. The LLM
+  analyzer confirms whether event.data reaches a dangerous sink.
+originChecks: [origin]

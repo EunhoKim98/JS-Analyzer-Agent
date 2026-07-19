@@ -1,0 +1,25 @@
+class: dom-xss
+severity: high
+detector: sink-flow
+sinks:
+  properties: [innerHTML, outerHTML]
+  calls: [document.write, document.writeln, eval, Function, execScript]
+  guardedCalls: [setTimeout, setInterval]   # sink only when first arg is a string
+  memberCalls: [insertAdjacentHTML, html, append, prepend, after, before, replaceWith]
+sources:
+  memberPaths:
+    - location.href
+    - location.hash
+    - location.search
+    - location.pathname
+    - location.hostname
+    - document.URL
+    - document.documentURI
+    - document.baseURI
+    - document.referrer
+    - document.cookie
+    - window.name
+  eventProps: [data]
+sanitizers:
+  calls: [DOMPurify.sanitize, sanitizeHtml]
+  properties: [textContent, innerText]

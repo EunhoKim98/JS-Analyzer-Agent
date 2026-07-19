@@ -1,0 +1,18 @@
+{
+  "models": {
+    "analyze": "claude-sonnet-5",
+    "judge": "claude-opus-4-8"
+  },
+  "maxSinks": 0,
+  "analyzeVendorSinks": false,
+  "concurrency": 4,
+  "temperature": 0,
+  "maxTokensPerCall": 2048,
+  "active": {
+    "enabled": false,
+    "proxy": null,
+    "headers": {},
+    "cookies": {},
+    "scope": []
+  }
+}

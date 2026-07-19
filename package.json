@@ -1,0 +1,32 @@
+{
+  "name": "js-analyzer-agent",
+  "version": "0.1.0",
+  "description": "JS Analyzer Agent — multi-agent JavaScript vulnerability analyzer (v0.1): deterministic static pre-pass + LLM OODA analysis + FP judge",
+  "bin": {
+    "js-analyzer": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
+    "@babel/parser": "^7.25.6",
+    "@babel/traverse": "^7.25.6",
+    "@babel/types": "^7.25.6",
+    "js-beautify": "^1.15.1",
+    "playwright": "^1.48.0",
+    "source-map": "^0.7.4",
+    "yaml": "^2.5.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.20.6",
+    "@types/js-beautify": "^1.14.3",
+    "@types/node": "^22.7.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
