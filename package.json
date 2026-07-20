@@ -2,6 +2,14 @@
   "name": "js-analyzer-agent",
   "version": "0.1.0",
   "description": "JS Analyzer Agent — multi-agent JavaScript vulnerability analyzer (v0.1): deterministic static pre-pass + LLM OODA analysis + FP judge",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EunhoKim98/JS-Analyzer-Agent.git"
+  },
+  "homepage": "https://github.com/EunhoKim98/JS-Analyzer-Agent#readme",
+  "bugs": {
+    "url": "https://github.com/EunhoKim98/JS-Analyzer-Agent/issues"
+  },
   "bin": {
     "js-analyzer": "dist/cli.js"
   },

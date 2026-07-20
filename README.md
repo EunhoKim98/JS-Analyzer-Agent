@@ -4,23 +4,51 @@ Multi-agent JavaScript vulnerability analyzer. See [`DESIGN.md`](./DESIGN.md) fo
 
 This repo is at **milestone v0.1**: deterministic static pre-pass → LLM OODA analysis → FP judge → HTML/JSON report, CLI only.
 
+## Concept
+
+Deterministic static analysis narrows the search; LLM agents reason only about the
+ranked candidates. This is cheaper and more precise than a pure-LLM scan, and more
+context-aware than pure static analysis.
+
+- **Static pre-pass** — Babel AST finds sinks/sources/sanitizers and heuristic taint
+  ranks the risky spots. No LLM, runs anywhere.
+- **Agentic analysis** — Sonnet runs one OODA round (Observe → Orient → Decide → Act)
+  per ranked sink, focusing on candidates instead of the whole codebase.
+- **FP judge** — Opus re-reviews each finding and a deterministic recheck
+  cross-validates, so only high-confidence findings survive.
+- **Data-driven rules** — vulnerability classes are `rules/*.yaml` cards; adding a
+  class means adding a card, not changing code.
+
 ## Pipeline (v0.1)
 
-```
-[0] ingest      file / dir / url  → content-hash
-[1] unbundle    sourcemap reconstruct, else beautify (deterministic)
-[2] static      AST sink/source/sanitizer detection + heuristic taint + assets/secrets (no LLM)
-[5] analyze     Sonnet, one OODA round per ranked sink        (needs API key)
-[7] judge       Opus FP judge + deterministic recheck          (needs API key)
-[8] report      report.html + assets_export.json
+```mermaid
+flowchart TD
+    A["[0] ingest<br/>file · dir · url → content-hash"]
+    B["[1] unbundle<br/>sourcemap reconstruct / beautify + page JS"]
+    C["[2] static<br/>AST sinks · sources · taint · secrets"]
+    D["[5] analyze<br/>Sonnet · OODA per ranked sink"]
+    E["[7] judge<br/>Opus · FP verdict + deterministic recheck"]
+    F["[8] report<br/>report.html · assets_export.json"]
+    A --> B --> C --> D --> E --> F
+    classDef det fill:#e7edf4,stroke:#3f5a76,color:#1a2231;
+    classDef llm fill:#efeaff,stroke:#6a45ff,color:#2a1c4d;
+    class A,B,C,F det;
+    class D,E llm;
 ```
 
-Later milestones (explore/asset/chaining agents, active PoC verification, Burp
-extension, Claude Code wrapper) are specified in `DESIGN.md` but not yet built.
+**Legend** — steel = deterministic (no API key, runs anywhere); violet = LLM agent
+(needs API key). The taint model is `source → sanitizer? → sink`: user input reaching
+a dangerous sink without sanitization is a candidate finding.
+
+Numbers `3 · 4 · 6` are reserved for later milestones (explore/asset/chaining agents,
+active PoC verification, Burp extension, Claude Code wrapper) — specified in
+`DESIGN.md` but not yet built.
 
 ## Install
 
 ```bash
+git clone https://github.com/EunhoKim98/JS-Analyzer-Agent.git
+cd JS-Analyzer-Agent
 npm install
 npm run build
 ```
