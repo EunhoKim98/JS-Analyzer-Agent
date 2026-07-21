@@ -1,4 +1,4 @@
-import { LlmClient } from './client';
+import { LlmProvider } from './provider';
 import { JsAnalConfig } from '../types';
 import { RunStore } from '../orchestrator/store';
 
@@ -14,7 +14,7 @@ export interface Agent<In, Out> {
 // (공통 협력자를 한 곳에 모아 중복 생성자 코드를 제거; DIP)
 export abstract class LlmAgent {
   constructor(
-    protected readonly llm: LlmClient,
+    protected readonly llm: LlmProvider,
     protected readonly config: JsAnalConfig,
     protected readonly store: RunStore,
   ) {}

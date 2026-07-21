@@ -111,6 +111,8 @@ export interface RuleCard {
 
 export interface JsAnalConfig {
   models: { analyze: string; judge: string };
+  // LLM 백엔드 선택(D4): sdk(HTTP, ANTHROPIC_BASE_URL+토큰) / claude-cli(`claude -p`) / codex(`codex exec`).
+  provider: 'sdk' | 'claude-cli' | 'codex';
   maxSinks: number;
   analyzeVendorSinks: boolean; // false = vendor/library files go the CVE route, not per-sink LLM
   concurrency: number;

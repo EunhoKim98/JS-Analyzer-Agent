@@ -1,14 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { IngestedFile } from '../types';
-import { FileIngestor } from './index';
+import { FileIngestor, contentHash } from './index';
 import { BrowserDiscoverer } from './browser';
+import { dedupeFiles } from './dedupe';
+import { SeedFile } from '../orchestrator/context';
 
 export interface AcquireOptions {
   browser?: boolean; // force Playwright page discovery
   noBrowser?: boolean; // force raw fetch even for a page URL
   scopeHosts?: string[]; // extra in-scope hosts for discovery
   allHosts?: boolean; // include third-party JS in discovery
+  seedFiles?: SeedFile[]; // external JS seed (Burp history) — deduped, then Playwright fills gaps
 }
 
 export interface AcquisitionResult {
@@ -30,17 +33,31 @@ export class SourceAcquirer {
     const isUrl = /^(https?|file):/i.test(target);
     const isJsUrl = /\.m?js(\?|#|$)/i.test(target);
     const useBrowser = !opts.noBrowser && (!!opts.browser || (isUrl && !isJsUrl));
+    const hasSeed = !!opts.seedFiles?.length;
 
-    let files: IngestedFile[];
+    // Seed from Burp history (D5): becomes the base set before gap-fill.
+    const seed: IngestedFile[] = (opts.seedFiles || []).map((s) => ({
+      file: s.name,
+      code: s.code,
+      origin: 'raw',
+      contentHash: contentHash(s.code),
+    }));
+
+    // Discovery fills the gaps the seed doesn't cover.
+    let discovered: IngestedFile[] = [];
     if (isUrl && useBrowser) {
-      files = await this.browserDiscoverer.discover(target, {
+      discovered = await this.browserDiscoverer.discover(target, {
         scopeHosts: opts.scopeHosts,
         allHosts: opts.allHosts,
       });
-      if (!files.length) console.error('[discover] no in-scope JS found on the page');
-    } else {
-      files = await this.fileIngestor.ingest(target);
+    } else if (!hasSeed || !isUrl) {
+      // With a seed + page URL and no browser, the seed is the whole input.
+      discovered = await this.fileIngestor.ingest(target);
     }
+
+    // Preprocess: dedupe the union (Burp history repeats the same JS often).
+    const files = dedupeFiles([...seed, ...discovered]);
+    if (!files.length) console.error('[acquire] no JS acquired (seed empty and no in-scope JS found)');
 
     const targetDir = isUrl
       ? undefined
