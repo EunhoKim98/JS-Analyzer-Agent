@@ -1,17 +1,75 @@
 #!/usr/bin/env node
 import { runPipeline } from './orchestrator/pipeline';
+import { RunOptions, RunResult } from './orchestrator/context';
 
-function flag(argv: string[], name: string): string | undefined {
-  const i = argv.indexOf(name);
-  return i >= 0 && argv[i + 1] ? argv[i + 1] : undefined;
-}
-function numFlag(argv: string[], name: string): number | undefined {
-  const v = flag(argv, name);
-  return v != null ? Number(v) : undefined;
+// 인자 파서 — argv 배열에서 플래그·값을 꺼내는 저수준 파싱을 캡슐화한다(SRP).
+// Cli는 "무엇을 파싱하는지"만 알고, "어떻게 꺼내는지"는 이 클래스가 담당한다.
+class ArgParser {
+  constructor(private readonly argv: string[]) {}
+
+  has(name: string): boolean {
+    return this.argv.includes(name);
+  }
+
+  flag(name: string): string | undefined {
+    const i = this.argv.indexOf(name);
+    return i >= 0 && this.argv[i + 1] ? this.argv[i + 1] : undefined;
+  }
+
+  numFlag(name: string): number | undefined {
+    const v = this.flag(name);
+    return v != null ? Number(v) : undefined;
+  }
+
+  at(index: number): string | undefined {
+    return this.argv[index];
+  }
+
+  list(name: string): string[] | undefined {
+    const v = this.flag(name);
+    return v ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined;
+  }
 }
 
-function usage(): void {
-  console.log(`JS Analyzer Agent — multi-agent JS vulnerability analyzer (v0.1)
+// CLI 애플리케이션 — 인자 해석, 사용법 출력, 파이프라인 실행/결과 표시를 담당한다.
+export class Cli {
+  constructor(private readonly argv: string[]) {}
+
+  async run(): Promise<void> {
+    const args = new ArgParser(this.argv);
+    if (args.has('--help') || args.at(0) !== 'analyze' || !args.at(1)) {
+      Cli.usage();
+      process.exit(args.has('--help') ? 0 : 1);
+    }
+
+    const opts: RunOptions = {
+      target: args.at(1)!,
+      noLlm: args.has('--no-llm'),
+      configPath: args.flag('--config'),
+      maxSinks: args.numFlag('--max-sinks'),
+      baseDir: args.flag('--out'),
+      browser: args.has('--browser'),
+      noBrowser: args.has('--no-browser'),
+      allHosts: args.has('--all-hosts'),
+      scopeHosts: args.list('--scope'),
+    };
+
+    const res = await runPipeline(opts);
+    Cli.printResult(res);
+  }
+
+  private static printResult(res: RunResult): void {
+    console.log(`\n✓ run ${res.runId}`);
+    console.log(`  auth:     ${res.meta.auth}${res.meta.llmUsed ? '' : ' (static only)'}`);
+    console.log(`  report:   ${res.reportPath}`);
+    console.log(`  sinks:    ${res.meta.counts.sinks}  analyzed: ${res.meta.counts.analyzed}`);
+    console.log(`  findings: ${res.meta.counts.findings}  confirmed: ${res.meta.counts.confirmed}`);
+    console.log(`  assets:   ${res.meta.counts.assets}`);
+    console.log(`  dir:      ${res.dir}`);
+  }
+
+  private static usage(): void {
+    console.log(`JS Analyzer Agent — multi-agent JS vulnerability analyzer (v0.1)
 
 Usage:
   js-analyzer analyze <file|dir|url> [options]
@@ -35,36 +93,10 @@ Auth (any one enables the LLM analysis + FP judge stages):
   CLAUDE_CODE_OAUTH_TOKEN      Claude subscription OAuth token (or ANTHROPIC_AUTH_TOKEN)
   ~/.claude/.credentials.json  auto-detected after 'claude login'
 Without any of these, only the deterministic static pass runs.`);
-}
-
-async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
-  if (argv.includes('--help') || argv[0] !== 'analyze' || !argv[1]) {
-    usage();
-    process.exit(argv.includes('--help') ? 0 : 1);
   }
-  const scope = flag(argv, '--scope');
-  const res = await runPipeline({
-    target: argv[1],
-    noLlm: argv.includes('--no-llm'),
-    configPath: flag(argv, '--config'),
-    maxSinks: numFlag(argv, '--max-sinks'),
-    baseDir: flag(argv, '--out'),
-    browser: argv.includes('--browser'),
-    noBrowser: argv.includes('--no-browser'),
-    allHosts: argv.includes('--all-hosts'),
-    scopeHosts: scope ? scope.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
-  });
-  console.log(`\n✓ run ${res.runId}`);
-  console.log(`  auth:     ${res.meta.auth}${res.meta.llmUsed ? '' : ' (static only)'}`);
-  console.log(`  report:   ${res.reportPath}`);
-  console.log(`  sinks:    ${res.meta.counts.sinks}  analyzed: ${res.meta.counts.analyzed}`);
-  console.log(`  findings: ${res.meta.counts.findings}  confirmed: ${res.meta.counts.confirmed}`);
-  console.log(`  assets:   ${res.meta.counts.assets}`);
-  console.log(`  dir:      ${res.dir}`);
 }
 
-main().catch((e) => {
+new Cli(process.argv.slice(2)).run().catch((e) => {
   console.error(`✗ ${e?.stack || e}`);
   process.exit(1);
 });
