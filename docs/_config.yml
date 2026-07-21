@@ -1,0 +1,38 @@
+# GitHub Pages (Jekyll) — just-the-docs 테마로 문서 사이트를 빌드한다.
+# 사이드바 네비게이션 + 검색 + 다크 테마 = "자연스러운 이동"을 위한 표준 문서 디자인.
+title: JS Analyzer Agent
+description: 멀티 에이전트 자바스크립트 취약점 분석기 — 결정론적 정적분석이 후보를 좁히고 LLM이 그것만 추론한다.
+lang: ko
+
+remote_theme: just-the-docs/just-the-docs
+
+url: https://eunhokim98.github.io
+baseurl: /JS-Analyzer-Agent
+
+# 다크 우선 (기존 페이지의 톤 유지)
+color_scheme: dark
+
+search_enabled: true
+heading_anchors: true
+
+# 파이프라인/아키텍처 다이어그램용
+mermaid:
+  version: "10.9.1"
+
+# 우상단 보조 링크
+aux_links:
+  "GitHub ↗":
+    - "https://github.com/EunhoKim98/JS-Analyzer-Agent"
+aux_links_new_tab: true
+
+# 하단 "edit this page" 링크
+gh_edit_link: true
+gh_edit_link_text: "이 페이지 편집"
+gh_edit_repository: "https://github.com/EunhoKim98/JS-Analyzer-Agent"
+gh_edit_branch: "main"
+gh_edit_view_mode: "tree"
+
+plugins:
+  - jekyll-remote-theme
+
+footer_content: "JS Analyzer Agent · 결정론적 정적분석 + LLM OODA + 오탐 판정"

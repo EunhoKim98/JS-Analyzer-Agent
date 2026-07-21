@@ -1,7 +1,14 @@
+---
+title: 설계 문서 (Burp)
+nav_order: 8
+description: office-hours 설계 — single-JAR가 Node 코어를 번들, provider 선택형, Burp history 시드.
+---
+
 # 설계 문서 — Burp 확장 통합 (single-JAR, provider 선택형)
+{: .no_toc }
 
 작성: 2026-07-21 · 대상 마일스톤: v1.0 · 현재: v0.1
-관련: [`DESIGN.md`](../DESIGN.md) §4.1 / §10 / §18, [`CLAUDE.md`](../CLAUDE.md)
+관련: DESIGN.md §4.1 / §10 / §18, CLAUDE.md
 
 ## 한 줄 요약
 

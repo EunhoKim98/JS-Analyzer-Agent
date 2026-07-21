@@ -10,3 +10,8 @@ burp/build/
 burp/.gradle/
 burp/src/main/resources/core.zip
 burp/src/main/resources/core/
+# jekyll (docs/ GitHub Pages) local build output
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/vendor/
