@@ -14,15 +14,11 @@ export interface RunOptions {
   target: string;
   configPath?: string;
   noLlm?: boolean;
-  seedFiles?: SeedFile[]; // Burp history 등 외부 시드 JS (D5); 중복은 전처리에서 제거
+  seedFiles?: SeedFile[]; // Burp history 등 외부 시드 JS (D7); 중복은 전처리에서 제거
 
   provider?: 'sdk' | 'claude-cli' | 'codex'; // LLM 백엔드 선택(D4), config.provider 오버라이드
   maxSinks?: number;
   baseDir?: string;
-  browser?: boolean; // force Playwright page discovery
-  noBrowser?: boolean; // force raw fetch even for a page URL
-  scopeHosts?: string[]; // extra in-scope hosts for discovery
-  allHosts?: boolean; // include third-party JS in discovery
 }
 
 // 파이프라인 최종 결과 — CLI가 사용자에게 출력한다.
@@ -32,6 +28,15 @@ export interface RunResult {
   reportPath: string;
   meta: RunMeta;
 }
+
+// 파이프라인 스트리밍 이벤트(D8) — SSE로 흘려보내는 계약. finding·verdict는 finding_id로
+// 상관되어, 라이브 페이지가 finding 행을 먼저 그리고 verdict 도착 시 그 행 상태를 갱신한다.
+export type PipelineEvent =
+  | { type: 'stage'; name: string }
+  | { type: 'finding'; finding: Finding }
+  | { type: 'verdict'; finding_id: string; status: Verdict['status']; verdict: Verdict }
+  | { type: 'done'; meta: RunMeta }
+  | { type: 'error'; message: string };
 
 export interface RunMeta {
   target: string;
@@ -55,7 +60,7 @@ export class RunContext {
   store!: RunStore;
   contentHash = 'empty';
   raw: IngestedFile[] = [];
-  usedBrowser = false;
+  acquisition = 'direct';
   targetDir?: string;
 
   // set by the unbundle stage
@@ -87,7 +92,13 @@ export class RunContext {
   constructor(
     readonly opts: RunOptions,
     readonly config: JsAnalConfig,
+    private readonly onEvent?: (e: PipelineEvent) => void,
   ) {}
+
+  // 스트리밍 이벤트 방출(D8) — onEvent가 없으면 no-op(CLI 모드).
+  emit(e: PipelineEvent): void {
+    this.onEvent?.(e);
+  }
 
   // Fast lookup of reconstructed code by logical file name (used by analyze/judge).
   codeByFile(): Map<string, string> {

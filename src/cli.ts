@@ -25,11 +25,6 @@ class ArgParser {
   at(index: number): string | undefined {
     return this.argv[index];
   }
-
-  list(name: string): string[] | undefined {
-    const v = this.flag(name);
-    return v ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined;
-  }
 }
 
 // CLI 애플리케이션 — 인자 해석, 사용법 출력, 파이프라인 실행/결과 표시를 담당한다.
@@ -56,10 +51,6 @@ export class Cli {
       configPath: args.flag('--config'),
       maxSinks: args.numFlag('--max-sinks'),
       baseDir: args.flag('--out'),
-      browser: args.has('--browser'),
-      noBrowser: args.has('--no-browser'),
-      allHosts: args.has('--all-hosts'),
-      scopeHosts: args.list('--scope'),
     };
 
     const res = await runPipeline(opts);
@@ -107,12 +98,8 @@ Options:
   --out <dir>         base dir for runs/ output (default cwd)
   --help              show this help
 
-Page discovery (URL targets):
-  a non-.js URL is loaded in headless chromium and its JS is discovered
-  --browser           force page discovery (e.g. for a .js-looking URL)
-  --no-browser        force raw fetch of the URL (no browser)
-  --scope <h1,h2>     extra in-scope hosts to include
-  --all-hosts         include third-party JS (default: same site only)
+Targets: a file, a directory, or a direct .js URL (fetched raw). Page crawling
+was removed — the Burp extension seeds JS from proxy history instead.
 
 Auth (any one enables the LLM analysis + FP judge stages):
   ANTHROPIC_API_KEY            Anthropic API key
