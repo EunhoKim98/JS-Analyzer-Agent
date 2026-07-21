@@ -37,6 +37,8 @@ description: 마일스톤 진행 상황.
 |---|---|
 | Java Montoya 확장 스캐폴딩(`burp/`) | 🟡 CI 빌드 대기 |
 | Release CI (태그 → OS별 JAR → Releases) | ✅ 워크플로우 · 첫 실행 대기 |
+| Playwright 제거 (사용자 인터렉션 트래픽만) | ⬜ 설계 확정(D7) |
+| SSE 스트리밍 + 라이브 웹 UI | ⬜ 설계 확정(D8) |
 
 자세히는 [Burp 확장]({{ '/burp.html' | relative_url }}) 참고.
 
