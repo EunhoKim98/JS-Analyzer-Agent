@@ -15,3 +15,7 @@ docs/_site/
 docs/.jekyll-cache/
 docs/.jekyll-metadata
 docs/vendor/
+
+# macOS
+.DS_Store
+**/.DS_Store
