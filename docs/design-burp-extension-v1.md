@@ -128,9 +128,9 @@ interface LlmProvider {
 | M4 단일 바이너리 | ✅ | bun `--compile` |
 | M5 Java 확장 | 🟡 | CI 빌드 대기 |
 | M6 Release CI | ✅ | 태그 → OS별 JAR |
-| **M7 Playwright 제거 (D7)** | ⬜ | `BrowserDiscoverer`·acquire의 browser 경로·playwright 의존 삭제, `package-core.sh`의 `--external chromium-bidi` 제거, CLI URL 페이지 모드 제거(직접 `.js` fetch만 유지) |
-| **M8 SSE + 라이브 UI (D8)** | ⬜ | `runPipeline`에 `onEvent`, 스테이지 emit, JobStore 이벤트 버퍼/구독, `GET /jobs/:id/events`(SSE) + `GET /jobs/:id/live`(HTML) |
-| **M9 Java 슬림화** | ⬜ | 확장이 폴링·Swing 렌더 대신 `Desktop.browse(live URL)`. `CoreClient` 폴링 제거 |
+| **M7 Playwright 제거 (D7)** | ✅ | `BrowserDiscoverer`·browser 경로·playwright 의존 삭제, `--external chromium-bidi` 제거. 바이너리 69M→63M 자기완결. 실측: 파일/seed 분석 정상 |
+| **M8 SSE + 라이브 UI (D8)** | ✅ | `runPipeline(opts, onEvent)`, 스테이지 emit, JobStore 이벤트 버퍼/구독, `/jobs/:id/events`(SSE) + `/jobs/:id/live`(HTML). 실측: finding→verdict(상관)→done 스트리밍, 패키징 바이너리도 확인 |
+| **M9 Java 슬림화** | 🟡 | `CoreClient` 폴링/report 제거, `Desktop.browse(live URL)`, ConfigPanel Swing 렌더 제거. CI 컴파일 대기(로컬 JDK 없음) |
 
 ## 리스크 / 열린 질문
 
