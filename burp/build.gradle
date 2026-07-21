@@ -1,0 +1,36 @@
+// Burp Montoya 확장(M5) — 얇은 Java 계층. 번들된 코어 바이너리를 spawn 하고
+// 로컬 HTTP(M2)로 분석을 위임한다. fat JAR 로 빌드(Montoya는 compileOnly).
+//
+// 빌드: (JDK 17+ 필요)
+//   1) CI가 코어를 src/main/resources/core/ 에 넣음 (dist/core/* = 바이너리+rules+data)
+//   2) ./gradlew shadowJar  → build/libs/js-analyzer-burp-all.jar
+plugins {
+    id 'java'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'com.jsanalyzer'
+version = project.findProperty('appVersion') ?: '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Montoya API는 Burp가 런타임에 제공하므로 compileOnly.
+    compileOnly 'net.portswigger.burp.extensions:montoya-api:2025.5'
+    implementation 'com.google.code.gson:gson:2.11.0'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+shadowJar {
+    archiveClassifier.set('')      // js-analyzer-burp-<version>.jar
+    // src/main/resources/core/ (코어 바이너리+rules+data)는 자동으로 JAR에 포함됨.
+}
+
+build.dependsOn shadowJar

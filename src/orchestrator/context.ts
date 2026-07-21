@@ -2,11 +2,21 @@ import { JsAnalConfig, IngestedFile, SinkRecord, AssetRecord, LibraryFinding, Fi
 import { RunStore } from './store';
 import { AssetsExport } from '../report/json';
 
-// 파이프라인 실행 옵션 — CLI 인자에서 파싱되어 넘어온다.
+// Burp history 등 외부에서 넘어온 JS 시드 (URL/경로 + 본문). Playwright 수집 전에
+// 이걸 base로 삼고 빈틈만 보강한다(D5). name은 보통 URL/경로.
+export interface SeedFile {
+  name: string;
+  code: string;
+}
+
+// 파이프라인 실행 옵션 — CLI 인자 또는 HTTP 잡 본문에서 넘어온다.
 export interface RunOptions {
   target: string;
   configPath?: string;
   noLlm?: boolean;
+  seedFiles?: SeedFile[]; // Burp history 등 외부 시드 JS (D5); 중복은 전처리에서 제거
+
+  provider?: 'sdk' | 'claude-cli' | 'codex'; // LLM 백엔드 선택(D4), config.provider 오버라이드
   maxSinks?: number;
   baseDir?: string;
   browser?: boolean; // force Playwright page discovery

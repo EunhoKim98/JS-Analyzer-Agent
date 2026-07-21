@@ -1,0 +1,65 @@
+# Release CI(M6) — 버전 태그 푸시 시 OS별 코어 바이너리(bun 크로스컴파일)를 만들고,
+# 각 바이너리를 담은 Burp JAR(gradle shadowJar)을 빌드해 GitHub Releases에 첨부한다.
+#
+#   git tag v1.0.0 && git push origin v1.0.0   → js-analyzer-burp-1.0.0-<os>.jar 3종 업로드
+name: release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install deps (skip browser download)
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci
+
+      - name: Typecheck
+        run: ./node_modules/.bin/tsc --noEmit
+
+      - name: Build core binaries + JARs (per OS)
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p out
+          build_one() {
+            local bunTarget="$1" jarOs="$2"
+            echo "::group::$jarOs"
+            scripts/package-core.sh "$bunTarget" "dist/$jarOs"
+            ( cd "dist/$jarOs" && zip -qr core.zip . )
+            mkdir -p burp/src/main/resources
+            cp "dist/$jarOs/core.zip" burp/src/main/resources/core.zip
+            ( cd burp && gradle --no-daemon shadowJar -PappVersion="$VERSION" )
+            mv "burp/build/libs/js-analyzer-burp-$VERSION.jar" "out/js-analyzer-burp-$VERSION-$jarOs.jar"
+            rm -f burp/src/main/resources/core.zip
+            echo "::endgroup::"
+          }
+          build_one bun-linux-x64    linux-x64
+          build_one bun-darwin-arm64 macos-arm64
+          build_one bun-windows-x64  windows-x64
+          ls -lh out
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.jar
+          fail_on_unmatched_files: true
+          generate_release_notes: true

@@ -5,3 +5,8 @@ cache/
 *.log
 .env
 .omc/
+# burp (Java) build artifacts + bundled core resource
+burp/build/
+burp/.gradle/
+burp/src/main/resources/core.zip
+burp/src/main/resources/core/

@@ -2,7 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { z } from 'zod';
+import { LlmProvider, CallOpts } from './provider';
+import { extractJson } from '../util/json';
+
+export { CallOpts } from './provider';
 
 export type AuthMode = 'api' | 'oauth' | 'none';
 
@@ -85,21 +88,12 @@ export class AuthResolver {
   }
 }
 
-export interface CallOpts<T> {
-  model: string;
-  system: string;
-  user: string;
-  schema: z.ZodType<T>;
-  temperature: number;
-  maxTokens: number;
-  retries?: number;
-  onTrace?: (rec: unknown) => void;
-}
-
-// LLM 클라이언트 — Anthropic Messages API 호출과 "엄격한 JSON" 계약을 캡슐화한다.
+// SDK provider — Anthropic Messages API 호출과 "엄격한 JSON" 계약을 캡슐화한다.
 // AuthResolver 를 생성자 주입으로 받아(DIP) 인증 방식에 무관하게 동작하며,
 // 실제 SDK 클라이언트는 지연 생성해 인스턴스에 보관한다(전역 싱글턴 제거).
-export class LlmClient {
+// base URL·토큰은 SDK가 ANTHROPIC_BASE_URL/authToken 으로 읽으므로 사내 게이트웨이도 지원.
+export class LlmClient implements LlmProvider {
+  readonly kind = 'sdk' as const;
   private sdk: Anthropic | null = null;
 
   constructor(private readonly auth: AuthResolver) {}
@@ -145,7 +139,7 @@ export class LlmClient {
           .map((b) => (b as { text: string }).text)
           .join('\n');
         opts.onTrace?.({ attempt, model: opts.model, response: text, usage: resp.usage });
-        const parsed = opts.schema.safeParse(this.extractJson(text));
+        const parsed = opts.schema.safeParse(extractJson(text));
         if (parsed.success) return parsed.data;
         lastErr = parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
       } catch (e) {
@@ -159,15 +153,6 @@ export class LlmClient {
     }
     console.error(`[agent] giving up after ${retries} attempts: ${lastErr}`);
     return null;
-  }
-
-  private extractJson(text: string): unknown {
-    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const body = fence ? fence[1] : text;
-    const start = body.indexOf('{');
-    const end = body.lastIndexOf('}');
-    const slice = start >= 0 && end > start ? body.slice(start, end + 1) : body;
-    return JSON.parse(slice);
   }
 
   private sleep(ms: number): Promise<void> {

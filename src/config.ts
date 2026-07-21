@@ -7,6 +7,7 @@ import { JsAnalConfig } from './types';
 export class ConfigLoader {
   private static readonly DEFAULTS: JsAnalConfig = {
     models: { analyze: 'claude-sonnet-5', judge: 'claude-opus-4-8' },
+    provider: 'sdk', // sdk | claude-cli | codex — LLM 백엔드 선택(D4)
     maxSinks: 0, // 0 = analyze all ranked sinks (no cap)
     analyzeVendorSinks: false, // vendor/library files → CVE path, not per-sink LLM
     concurrency: 4,

@@ -5,7 +5,8 @@ import { SourceAcquirer } from '../ingest/acquire';
 import { Unbundler } from '../static/unbundle';
 import { StaticAnalyzer } from '../static';
 import { RuleRepository } from '../static/rules';
-import { AuthResolver, LlmClient } from '../agents/client';
+import { AuthResolver } from '../agents/client';
+import { LlmProvider } from '../agents/provider';
 import { AnalyzeAgent } from '../agents/analyze';
 import { JudgeAgent } from '../agents/judge';
 import { HtmlReporter, ReportData } from '../report/html';
@@ -32,6 +33,7 @@ export class AcquireStage implements PipelineStage {
       noBrowser: ctx.opts.noBrowser,
       scopeHosts: ctx.opts.scopeHosts,
       allHosts: ctx.opts.allHosts,
+      seedFiles: ctx.opts.seedFiles,
     });
     ctx.raw = res.files;
     ctx.usedBrowser = res.usedBrowser;
@@ -83,7 +85,10 @@ export class RouteStage implements PipelineStage {
 
   async run(ctx: RunContext): Promise<void> {
     const { config } = ctx;
-    ctx.useLlm = !ctx.opts.noLlm && this.auth.hasAuth();
+    // CLI providers (claude-cli/codex) use their own local login, not AuthResolver;
+    // only the SDK provider needs an API key/OAuth token resolved here.
+    const providerReady = config.provider !== 'sdk' || this.auth.hasAuth();
+    ctx.useLlm = !ctx.opts.noLlm && providerReady;
 
     const libFiles = new Set(
       ctx.files.filter((f) => StaticAnalyzer.isLibraryFile(f.file, ctx.libraries)).map((f) => f.file),
@@ -121,7 +126,7 @@ export class RouteStage implements PipelineStage {
 export class AnalyzeStage implements PipelineStage {
   readonly name = 'analyze';
   constructor(
-    private readonly llm: LlmClient,
+    private readonly llm: LlmProvider,
     private readonly rules: RuleRepository,
     private readonly slicer: CodeSlicer,
   ) {}
@@ -149,7 +154,7 @@ export class AnalyzeStage implements PipelineStage {
 export class JudgeStage implements PipelineStage {
   readonly name = 'judge';
   constructor(
-    private readonly llm: LlmClient,
+    private readonly llm: LlmProvider,
     private readonly slicer: CodeSlicer,
   ) {}
 
@@ -211,7 +216,7 @@ export class ReportStage implements PipelineStage {
       acquisition: ctx.usedBrowser ? 'browser (playwright)' : 'direct',
       files: ctx.files.map((f) => ({ file: f.file, origin: f.origin })),
       llmUsed: ctx.useLlm,
-      auth: this.auth.describe(),
+      auth: ctx.config.provider === 'sdk' ? this.auth.describe() : `${ctx.config.provider} (local CLI)`,
       config: { maxSinks: ctx.config.maxSinks, models: ctx.config.models },
       counts: {
         sinks: ctx.sinks.length,

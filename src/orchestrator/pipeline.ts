@@ -1,13 +1,14 @@
-import * as path from 'path';
 import { ConfigLoader } from '../config';
 import { RuleRepository } from '../static/rules';
 import { StaticAnalyzer } from '../static';
 import { Unbundler } from '../static/unbundle';
 import { SourceAcquirer } from '../ingest/acquire';
-import { AuthResolver, LlmClient } from '../agents/client';
+import { AuthResolver } from '../agents/client';
+import { createLlmProvider } from '../agents/providers/factory';
 import { HtmlReporter } from '../report/html';
 import { AssetsExporter } from '../report/json';
 import { CodeSlicer } from '../util/slice';
+import { rulesDir, dataDir } from '../util/paths';
 import { RunContext, RunOptions, RunResult } from './context';
 import {
   PipelineStage,
@@ -40,17 +41,17 @@ export class Pipeline {
 export function runPipeline(opts: RunOptions): Promise<RunResult> {
   const config = new ConfigLoader().load(opts.configPath);
   if (opts.maxSinks != null) config.maxSinks = opts.maxSinks;
+  if (opts.provider) config.provider = opts.provider;
 
-  const dataDir = path.resolve(__dirname, '../../data');
-  const rules = RuleRepository.load();
+  const rules = RuleRepository.load(rulesDir());
   const auth = new AuthResolver();
-  const llm = new LlmClient(auth);
+  const llm = createLlmProvider(config.provider, auth);
   const slicer = new CodeSlicer();
 
   const pipeline = new Pipeline([
     new AcquireStage(new SourceAcquirer()),
     new UnbundleStage(new Unbundler()),
-    new StaticStage(new StaticAnalyzer(rules, dataDir)),
+    new StaticStage(new StaticAnalyzer(rules, dataDir())),
     new RouteStage(auth),
     new AnalyzeStage(llm, rules, slicer),
     new JudgeStage(llm, slicer),
