@@ -19,8 +19,9 @@ git clone https://github.com/EunhoKim98/JS-Analyzer-Agent.git
 cd JS-Analyzer-Agent
 npm install
 npm run build
-npx playwright install chromium   # 페이지 수집용(1회)
 ```
+
+> 브라우저 설치가 필요 없습니다 — Playwright/헤드리스 크로미움은 제거되어(D7) 코어는 완전 자기완결입니다.
 
 ## 분석 (CLI)
 
@@ -34,13 +35,15 @@ npx tsx src/cli.ts analyze samples/vulnerable.js
 # LLM 백엔드 선택
 node dist/cli.js analyze <target> --provider sdk|claude-cli|codex
 
-# 페이지 URL → 헤드리스 크로미움으로 JS 수집 후 분석
-node dist/cli.js analyze https://example.com --no-llm
-node dist/cli.js analyze https://example.com --all-hosts   # 서드파티 JS 포함
+# 직접 .js URL → 원문 fetch 후 분석 (자동 크롤링·페이지 렌더 없음, D7)
+node dist/cli.js analyze https://example.com/app.js --no-llm
+
+# 디렉터리 전체 분석
+node dist/cli.js analyze ./dist --no-llm
 ```
 
-옵션: `--no-llm`, `--provider <p>`, `--max-sinks <K>`, `--config <path>`, `--out <dir>`,
-`--browser` / `--no-browser`, `--scope <h1,h2>`, `--all-hosts`.
+옵션: `--no-llm`, `--provider <p>`, `--max-sinks <K>`, `--config <path>`, `--out <dir>`.
+페이지 전체의 JS가 필요하면 [Burp 확장]({{ '/burp.html' | relative_url }}) 시드를 사용합니다(D7).
 
 ## 로컬 HTTP 서버 (Burp 확장용)
 

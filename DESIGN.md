@@ -186,13 +186,17 @@ v1은 완전한 inter-procedural 데이터플로우를 시도하지 않는다(mi
 **획득 앞단만 교체**한다:
 
 - **Burp 확장**: 프록시가 이미 트래픽을 본다. **스코프 내 호스트의 JS 응답만** 필터(MIME
-  `application/javascript`/`.js` + Burp 스코프 일치)해서 코어에 제출. 크롤링 불필요.
-- **Claude Code / CLI**: **URL을 받아 Playwright(headless chromium)로 페이지를 로드**하고
-  네트워크 응답의 JS + 인라인 `<script>` + 동적 삽입 스크립트를 수집. `networkidle`까지 대기해
-  lazy-load JS도 포착. 기본 스코프 = 대상과 동일 호스트(+서브도메인), `--all-hosts`로 확장.
-- **파일/디렉토리 / 단일 .js URL**: 직접 수집(현행).
+  `application/javascript`/`.js` + Burp 스코프 일치)해서 코어에 시드로 제출. 크롤링 불필요.
+- **Claude Code / CLI**: **파일·디렉토리 또는 직접 `.js` URL**을 입력받아 원문을 그대로 수집한다.
+  헤드리스 브라우저 로드·자동 크롤링·동적 스크립트 gap-fill은 하지 않는다(**D7로 Playwright 완전
+  제거** — chromium 동봉 불필요, 바이너리 자기완결). 페이지 전체의 JS가 필요하면 Burp 확장 시드를
+  쓴다(테스터가 실제 만진 트래픽만 분석).
 
-수집된 각 JS는 content-hash로 dedup 후 [1] 언번들로 진입. (v0.3 마일스톤)
+수집된 각 JS는 content-hash로 dedup(`dedupeFiles`) 후 [1] 언번들로 진입.
+
+> **개정(D7, 2026-07-21)**: 본래 v0.3 계획은 CLI가 Playwright로 페이지를 로드해 스크립트를
+> 수집하는 것이었으나, Burp 철학(사용자 인터렉션 트래픽만)과 chromium 패키징 문제(R2)로 인해
+> **Playwright 경로를 폐기**하고 획득을 "파일/`.js` URL/Burp 시드"로 한정했다.
 
 ## 5. 자산 파악
 

@@ -20,7 +20,7 @@ description: 수집에서 리포트까지 — 결정론(steel) 단계와 LLM(vio
 ```mermaid
 flowchart TD
     A["[0] ingest<br/>파일·디렉터리·URL → content-hash"]
-    B["[1] unbundle<br/>소스맵 복원 / beautify + 페이지 JS"]
+    B["[1] unbundle<br/>소스맵 복원 / beautify"]
     C["[2] static<br/>AST sink·source·taint·secrets"]
     D["[5] analyze<br/>LLM · OODA per ranked sink"]
     E["[7] judge<br/>LLM · 오탐 판정 + 결정론 recheck"]
@@ -38,8 +38,8 @@ flowchart TD
 
 | # | 단계 | 종류 | 하는 일 |
 |---|---|---|---|
-| 0 | **ingest** | 결정론 | 파일·디렉터리·URL을 입력받아 content-hash로 정규화. 페이지 URL이면 다음 단계에서 스크립트를 수집. |
-| 1 | **unbundle** | 결정론 | 소스맵이 있으면 원본 복원, 없으면 beautify. 헤드리스 크로미움(Playwright)으로 외부·인라인·동적 주입 스크립트까지 확보. |
+| 0 | **ingest** | 결정론 | 파일·디렉터리·직접 `.js` URL, 또는 Burp 확장이 넘긴 JS 시드를 입력받아 content-hash로 정규화·중복제거. 자동 크롤링·헤드리스 브라우저 수집은 없음(D7). |
+| 1 | **unbundle** | 결정론 | 소스맵(외부/inline)이 있으면 원본 복원, 없으면 beautify. 브라우저 로드 없이 인제스트된 소스만 대상으로 한다(D7로 Playwright 제거). |
 | 2 | **static** | 결정론 | Babel AST로 sink·source·sanitizer 탐지 + 휴리스틱 테인트 + 에셋·시크릿 수집. LLM 없이 sink 순위화. |
 | 5 | **analyze** | LLM (Sonnet 기본) | 순위가 매겨진 sink마다 한 번의 OODA 라운드로 도달 가능성·악용 경로 추론. |
 | 7 | **judge** | LLM (Opus 기본) | 오탐 판정 + 결정론적 recheck 교차 검증. 확신 있는 finding만 통과. |
