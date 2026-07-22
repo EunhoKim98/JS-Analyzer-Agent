@@ -15,9 +15,9 @@ export interface AcquisitionResult {
   targetDir?: string; // local dir for sourcemap resolution (undefined for URLs)
 }
 
-// 소스 취득기 — "어디서 JS를 가져올지"를 결정한다(D7 개정). Playwright 자동 크롤링을
-// 제거하고, 입력은 (1) Burp history 등 외부 시드 + (2) 파일·디렉터리·직접 `.js` fetch 뿐이다.
-// 사용자가 실제 만진 트래픽만 분석한다는 Burp 철학에 맞추고, chromium 의존을 없앤다.
+// 소스 취득기 — "어디서 JS를 가져올지"를 결정한다(D7). 헤드리스 브라우저 자동 크롤링은
+// 쓰지 않고, 입력은 (1) Burp history 등 외부 시드 + (2) 파일·디렉터리·직접 `.js` fetch 뿐이다.
+// 사용자가 실제 만진 트래픽만 분석한다는 Burp 철학에 맞추고, 브라우저 의존을 없앤다.
 export class SourceAcquirer {
   constructor(private readonly fileIngestor: FileIngestor = new FileIngestor()) {}
 

@@ -2,8 +2,8 @@ import { JsAnalConfig, IngestedFile, SinkRecord, AssetRecord, LibraryFinding, Fi
 import { RunStore } from './store';
 import { AssetsExport } from '../report/json';
 
-// Burp history 등 외부에서 넘어온 JS 시드 (URL/경로 + 본문). Playwright 수집 전에
-// 이걸 base로 삼고 빈틈만 보강한다(D5). name은 보통 URL/경로.
+// Burp history 등 외부에서 넘어온 JS 시드 (URL/경로 + 본문). 이 시드가 분석 입력의
+// 전부이며 별도 브라우저 수집은 하지 않는다(D7). name은 보통 URL/경로.
 export interface SeedFile {
   name: string;
   code: string;

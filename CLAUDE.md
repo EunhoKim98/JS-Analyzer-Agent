@@ -7,7 +7,7 @@
 ## 빌드 · 실행
 
 ```bash
-npm install            # 의존성 설치 (Playwright 제거됨 — 브라우저 설치 불필요, D7)
+npm install            # 의존성 설치 (헤드리스 브라우저 미사용 — 브라우저 설치 불필요)
 npm run build          # tsc → dist/
 npm run dev -- analyze samples/vulnerable.js --no-llm   # tsx로 소스 직접 실행
 node dist/cli.js analyze <file|dir|url> [--no-llm] [--max-sinks K] [--config path] [--out dir]
@@ -53,7 +53,7 @@ node dist/cli.js analyze <file|dir|url> [--no-llm] [--max-sinks K] [--config pat
     `roadmap.md`·`burp.md` 중 해당 주제가 바뀌면. **특히 `pipeline.md`의 단계별 설명은
     실제 스테이지 동작과 반드시 일치해야 한다.**
 - **일관성 체크**: 기능을 제거/변경하면 `grep -rin "<옛기능>"`으로 문서 잔재를 찾아 함께 정리한다.
-  (예: Playwright 제거 시 모든 "현재 동작" 서술을 D7 기준으로 갱신.)
+  (예: 의존성·기능을 제거하면 모든 "현재 동작" 서술을 함께 갱신한다.)
 - **미래/로드맵 서술 구분**: 아직 구현 안 된 기능은 "현재 동작"으로 쓰지 말고 마일스톤/옵션임을
   명시한다. 제거된 기능을 미래 계획으로 남길 땐 근거(Dx)를 링크한다.
 - **커밋 메시지**: 코드+문서를 함께 커밋하거나, 문서 갱신 커밋을 같은 PR/브랜치에 포함한다.
@@ -67,7 +67,7 @@ node dist/cli.js analyze <file|dir|url> [--no-llm] [--max-sinks K] [--config pat
 CLI(Cli/ArgParser)
   └─ runPipeline (합성 루트: 모든 협력자 생성·주입)
        └─ Pipeline.run(RunContext)
-            [0] AcquireStage   ─ SourceAcquirer → FileIngestor + seed(dedupe). Playwright 제거(D7)
+            [0] AcquireStage   ─ SourceAcquirer → FileIngestor + seed(dedupe). 자동 크롤링 없음
             [1] UnbundleStage  ─ Unbundler (소스맵 복원 / beautify)
             [2] StaticStage    ─ StaticAnalyzer(Facade) → SinkDetector · AssetExtractor · LibraryScanner
             [3] RouteStage     ─ 벤더=CVE경로 / 앱싱크=LLM, maxSinks 예산 적용

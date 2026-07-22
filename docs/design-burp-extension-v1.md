@@ -22,12 +22,12 @@ Burp Suite에 **JAR 하나만 설치**하면, 분석 대상을 고르는 순간 
 | D2 | 산출물 = **JAR 하나** (별도 Node 서버 설치 없음) | 분석가는 버프에 JAR 하나만 설치 |
 | D3 | 엔진 위치 = **JAR이 Node 코어를 번들** (Approach B) | 방금 리팩터한 TS/Babel 코어 보존 + 단일 설치 |
 | D4 | provider 3종: SDK(=HTTP, URL+토큰 입력) / Claude Code(`claude -p`) / Codex(`codex exec`) | 사내망 토큰 유연성. 비-SDK는 CLI shell out |
-| ~~D5~~ | ~~시드 = Burp history URL+본문, Playwright는 빈틈만~~ → **D7로 개정** | |
+| ~~D5~~ | ~~시드 = Burp history URL+본문, 헤드리스 브라우저는 빈틈만~~ → **D7로 개정** | |
 | D6 | 배포 = 버전별 JAR을 **GitHub Releases**에 CI로 업로드 | 사용자가 버전 골라 설치 |
-| **D7** | **Playwright 완전 제거.** 시드 = **Burp history/sitemap의 사용자 인터렉션 JS만**(+직접 `.js` fetch). 자동 크롤링·gap-fill 없음 | Burp 철학(테스터가 만진 것만) + **chromium 패키징 문제(R2) 소멸**, 바이너리 자기완결 |
+| **D7** | **헤드리스 브라우저 자동 수집 완전 제거.** 시드 = **Burp history/sitemap의 사용자 인터렉션 JS만**(+직접 `.js` fetch). 자동 크롤링·gap-fill 없음 | Burp 철학(테스터가 만진 것만) + **브라우저 패키징 문제(R2) 소멸**, 바이너리 자기완결 |
 | **D8** | **결과는 폴링이 아니라 SSE 스트리밍**(per-finding), 코어가 **라이브 웹 UI**를 서빙해 브라우저에서 렌더 | finding이 완료되는 대로 흘려보냄. Java Swing 렌더 부담 제거, 브라우저 EventSource가 소비 |
 
-> **개정 2 (2026-07-21)**: D7(Playwright 제거) + D8(SSE + 라이브 웹 UI)로 D5와 폴링 방식을 대체함.
+> **개정 2 (2026-07-21)**: D7(헤드리스 브라우저 자동 수집 제거) + D8(SSE + 라이브 웹 UI)로 D5와 폴링 방식을 대체함.
 
 ## 아키텍처
 
@@ -65,9 +65,9 @@ Burp Suite에 **JAR 하나만 설치**하면, 분석 대상을 고르는 순간 
 - **HTTP 잡 API** (`src/http/`): `POST /jobs`(seed+provider) → job_id, `GET /jobs/:id`(상태), `GET /jobs/:id/report`(최종 HTML). 기존 `runPipeline`을 감싸는 얇은 잡 큐.
 - **SSE 스트림** (신규 `GET /jobs/:id/events`): `text/event-stream`. 파이프라인의 `onEvent` Observer가 흘리는 이벤트를 그대로 전달 — `stage`(진행), `finding`(analyze 결과 1건), `verdict`(judge 결과 1건), `done`(최종 meta). 연결은 `done`까지 유지.
 - **라이브 웹 UI** (신규 `GET /jobs/:id/live`): 자기완결 HTML 1장. 브라우저 `EventSource('/jobs/:id/events')`로 이벤트를 받아 finding을 **실시간으로 행 추가**. 완료 시 `report.html`과 동일 요약. (다크 테마, 인라인 CSS/JS.)
-- **시드 주입**: 확장이 넘긴 JS 본문을 `IngestedFile[]`로 바로 채택(재fetch 생략). URL만 온 경우 직접 `.js` fetch. **Playwright gap-fill 없음**(D7). 중복은 `dedupeFiles`로 접음.
+- **시드 주입**: 확장이 넘긴 JS 본문을 `IngestedFile[]`로 바로 채택(재fetch 생략). URL만 온 경우 직접 `.js` fetch. **헤드리스 브라우저 gap-fill 없음**(D7). 중복은 `dedupeFiles`로 접음.
 - **provider 추상화**: 아래 §provider 참고.
-- **단일 바이너리 패키징**: `bun build --compile` → OS별 바이너리. **Playwright 제거로 chromium 동봉 불필요, 바이너리 자기완결**(D7).
+- **단일 바이너리 패키징**: `bun build --compile` → OS별 바이너리. **헤드리스 브라우저 제거로 브라우저 동봉 불필요, 바이너리 자기완결**(D7).
 
 ## provider 추상화 (D1·D4의 핵심)
 
@@ -105,7 +105,7 @@ interface LlmProvider {
 2. 확장이 Burp history/sitemap에서 그 호스트의 JS(URL+본문) 수집 — **사용자 인터렉션 트래픽만**(D7).
 3. 확장이 코어에 `POST /jobs {seedFiles, provider}` 제출 → job_id.
 4. 확장이 `Desktop.browse("…/jobs/:id/live")`로 브라우저에 라이브 페이지를 연다.
-5. 코어: seed 채택(dedupe) → unbundle → 정적 pre-pass → analyze → judge. **Playwright 없음**(D7).
+5. 코어: seed 채택(dedupe) → unbundle → 정적 pre-pass → analyze → judge. **헤드리스 브라우저 없음**(D7).
 6. 각 finding·verdict가 완료되는 대로 SSE로 흘러 브라우저 라이브 페이지에 **실시간 렌더**(D8).
 
 ## 배포 / CI (D6)
@@ -128,14 +128,14 @@ interface LlmProvider {
 | M4 단일 바이너리 | ✅ | bun `--compile` |
 | M5 Java 확장 | 🟡 | CI 빌드 대기 |
 | M6 Release CI | ✅ | 태그 → OS별 JAR |
-| **M7 Playwright 제거 (D7)** | ✅ | `BrowserDiscoverer`·browser 경로·playwright 의존 삭제, `--external chromium-bidi` 제거. 바이너리 69M→63M 자기완결. 실측: 파일/seed 분석 정상 |
+| **M7 헤드리스 브라우저 제거 (D7)** | ✅ | `BrowserDiscoverer`·browser 경로·브라우저 자동화 의존 삭제, 번들 external 설정 제거. 바이너리 69M→63M 자기완결. 실측: 파일/seed 분석 정상 |
 | **M8 SSE + 라이브 UI (D8)** | ✅ | `runPipeline(opts, onEvent)`, 스테이지 emit, JobStore 이벤트 버퍼/구독, `/jobs/:id/events`(SSE) + `/jobs/:id/live`(HTML). 실측: finding→verdict(상관)→done 스트리밍, 패키징 바이너리도 확인 |
 | **M9 Java 슬림화** | 🟡 | `CoreClient` 폴링/report 제거, `Desktop.browse(live URL)`, ConfigPanel Swing 렌더 제거. CI 컴파일 대기(로컬 JDK 없음) |
 
 ## 리스크 / 열린 질문
 
 - ~~**R1**~~ ✅ 해소: `claude -p`가 스키마 JSON 3/3 통과(실측).
-- ~~**R2 (Playwright 패키징)**~~ ✅ **소멸**: D7로 Playwright 제거 → chromium 동봉 불필요, 바이너리 자기완결.
+- ~~**R2 (헤드리스 브라우저 패키징)**~~ ✅ **소멸**: D7로 헤드리스 브라우저 제거 → 브라우저 동봉 불필요, 바이너리 자기완결.
 - **R3 (사내망)**: SDK base URL이 사내 게이트웨이일 때 커스텀 헤더 필요? → provider UI에 헤더 입력 추가 여부.
 - **R4 (JAR 용량)**: OS별 바이너리 3종 동봉 시 JAR 비대. → OS별 JAR 분리 배포(현 CI 방식).
 - **R5 (보안)**: 코어 HTTP는 localhost 바인딩 + 토큰. **라이브 UI/SSE도 같은 토큰 게이트** 필요(브라우저가 토큰을 보내야 하므로 `live` URL에 일회용 토큰 쿼리 포함 검토).

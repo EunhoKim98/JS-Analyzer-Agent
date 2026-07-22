@@ -5,7 +5,7 @@
 # Usage: scripts/package-core.sh [bun-target] [outdir]
 #   bun-target: bun-darwin-arm64 | bun-linux-x64 | bun-windows-x64 | (생략=현재 플랫폼)
 #   outdir:     기본 dist/core
-# (D7) Playwright 제거로 바이너리는 완전 자기완결 — chromium/브라우저 동봉 불필요.
+# (D7) 헤드리스 브라우저 미사용으로 바이너리는 완전 자기완결 — 브라우저 동봉 불필요.
 set -euo pipefail
 
 TARGET="${1:-}"

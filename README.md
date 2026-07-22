@@ -78,7 +78,7 @@ node dist/cli.js serve --port 8787
 
 ## Acquisition (where the JS comes from)
 
-**Playwright/headless-browser crawling was removed (D7).** JS comes only from:
+**Automated browser crawling is not used (D7).** JS comes only from:
 
 - **Files / directories / a direct `.js` URL** (fetched raw) via the CLI.
 - **Burp extension** — the JS the tester actually browsed, pulled from Burp proxy

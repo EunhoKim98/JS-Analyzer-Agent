@@ -31,5 +31,5 @@ cd burp && ./gradlew shadowJar -PappVersion=<X.Y.Z>
 
 - 코어 바이너리는 OS별로 다르므로 **OS별 JAR**을 낸다(설계 R4). `core.zip`에 담긴
   바이너리가 실행 OS와 일치해야 한다.
-- Playwright 브라우저(chromium)는 바이너리에 못 담는다(R2). host 페이지 gap-fill 수집을
-  쓰려면 대상 PC에 chromium 설치 필요. Burp history 시드만으로도 진단은 동작.
+- 코어는 헤드리스 브라우저를 쓰지 않으므로(D7) 브라우저 동봉·설치가 필요 없다. 분석 입력은
+  Burp history 시드(사용자가 브라우징한 트래픽)로 한정된다.

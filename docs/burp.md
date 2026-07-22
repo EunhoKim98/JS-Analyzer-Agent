@@ -45,7 +45,7 @@ flowchart TD
 2. 확장이 sitemap에서 그 호스트의 JS(URL+응답 본문)를 시드로 수집 — **사용자가 방문한 트래픽만**(자동 크롤링 없음).
 3. 번들 코어를 추출·기동하고 `POST /jobs`로 seed와 provider를 제출 → job_id.
 4. 확장이 `/jobs/:id/live` 를 브라우저에 연다.
-5. 코어: seed 중복제거 → 정적 pre-pass → LLM analyze → judge (Playwright 없음).
+5. 코어: seed 중복제거 → 정적 pre-pass → LLM analyze → judge.
 6. 각 finding·verdict가 완료되는 대로 **SSE로 흘러** 브라우저 라이브 페이지에 실시간 렌더.
 
 ## 중복 경로 전처리
@@ -75,6 +75,6 @@ URL이 달라도 1개. 이름이 겹치는데 내용이 다르면 이름을 disa
 Burp → Extensions → Add → 다운로드한 JAR 선택. Suite 탭 **"JS Analyzer"**에서 provider(SDK URL·토큰 /
 Claude Code / Codex)를 설정합니다.
 
-> **Playwright 없음** — 코어 바이너리는 완전 자기완결이라 chromium 설치가 필요 없습니다. 대신 분석 범위는
+> **자기완결 바이너리** — 코어는 별도 브라우저 설치가 필요 없습니다. 대신 분석 범위는
 > **사용자가 실제로 브라우징한 트래픽**(Burp history)으로 한정됩니다. 방문하지 않은 페이지의 JS는 잡히지
 > 않으므로, 넓게 훑으려면 대상 앱을 충분히 브라우징한 뒤 분석하세요.
