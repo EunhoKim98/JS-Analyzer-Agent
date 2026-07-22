@@ -65,28 +65,27 @@ npx tsx src/cli.ts analyze samples/vulnerable.js --no-llm
 # full pipeline (static + LLM analysis + FP judge) — needs credentials (see Auth)
 npx tsx src/cli.ts analyze samples/vulnerable.js
 
-# or via the built binary
-node dist/cli.js analyze <file|dir|url> [--no-llm] [--max-sinks K] [--config path] [--out dir]
+# choose the LLM backend (D4): sdk (default) | claude-cli | codex
+node dist/cli.js analyze samples/vulnerable.js --provider claude-cli
 
-# page discovery: a non-.js URL is loaded in headless chromium and its JS
-# (external scripts + inline + dynamically injected) is discovered, then analyzed
-node dist/cli.js analyze https://example.com --no-llm
-node dist/cli.js analyze https://example.com --all-hosts      # include third-party JS
-node dist/cli.js analyze https://cdn.example.com/app.js       # single .js URL → fetched directly
+# or via the built binary
+node dist/cli.js analyze <file|dir|.js-url> [--no-llm] [--provider p] [--max-sinks K] [--config path] [--out dir]
+
+# local HTTP job API (what the Burp extension talks to) — with SSE live streaming
+node dist/cli.js serve --port 8787
+# POST /jobs · GET /jobs/:id · GET /jobs/:id/events (SSE) · GET /jobs/:id/live (web UI) · GET /jobs/:id/report
 ```
 
 ## Acquisition (where the JS comes from)
 
-Per DESIGN.md §4.11, the analysis front-end differs by surface:
+**Playwright/headless-browser crawling was removed (D7).** JS comes only from:
 
-- **CLI / Claude Code** — a page URL is loaded in **headless chromium (Playwright)**;
-  external scripts (network), inline `<script>`, and dynamically injected JS are
-  collected. Default scope = same site (`--scope h1,h2` to add hosts, `--all-hosts`
-  for third-party). A `.js` URL is fetched directly; `--browser` / `--no-browser`
-  force the mode.
-- **Burp extension** (later milestone) — filters in-scope JS responses from proxy traffic.
+- **Files / directories / a direct `.js` URL** (fetched raw) via the CLI.
+- **Burp extension** — the JS the tester actually browsed, pulled from Burp proxy
+  history/sitemap and sent to the core as a seed. No automated crawling; analysis is
+  scoped to real user interaction.
 
-Requires a one-time `npx playwright install chromium`.
+The core binary is fully self-contained — no browser install needed.
 
 ## Auth
 

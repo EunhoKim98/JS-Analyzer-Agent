@@ -6,10 +6,10 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.MimeType;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
-import com.google.gson.JsonObject;
 
 import javax.swing.JMenuItem;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +84,7 @@ public class JsAnalyzerExtension implements BurpExtension {
         return seeds;
     }
 
+    // 분석 제출 → 라이브 결과 페이지를 브라우저에서 연다(M9/D8). Swing 렌더·폴링 없음.
     private void analyze(String host) {
         try {
             List<AnalyzerConfig.SeedFile> seeds = collectSeeds(host);
@@ -93,28 +94,24 @@ public class JsAnalyzerExtension implements BurpExtension {
             CoreClient client = new CoreClient(base);
             panel.setStatus("잡 제출 (" + seeds.size() + " seed JS)...");
             String id = client.submit(config.jobJson(target, seeds));
-            panel.setStatus("분석 중... (job " + id + ")");
-            JsonObject res = client.pollUntilDone(id, 900);
-            if ("done".equals(res.get("status").getAsString())) {
-                panel.showReport(client.report(id));
-                panel.setStatus("완료 — " + summarize(res));
-            } else {
-                panel.setStatus("에러: " + (res.has("error") ? res.get("error").getAsString() : "unknown"));
-            }
+            String liveUrl = client.liveUrl(id);
+            openBrowser(liveUrl);
+            panel.setLiveLink("브라우저에서 라이브 결과가 열립니다 (" + seeds.size() + " seed JS)", liveUrl);
         } catch (Exception ex) {
             api.logging().logToError("analyze failed: " + ex);
             panel.setStatus("실패: " + ex.getMessage());
         }
     }
 
-    private String summarize(JsonObject res) {
+    private void openBrowser(String url) {
         try {
-            JsonObject counts = res.getAsJsonObject("meta").getAsJsonObject("counts");
-            return "findings=" + counts.get("findings").getAsInt()
-                    + " confirmed=" + counts.get("confirmed").getAsInt()
-                    + " assets=" + counts.get("assets").getAsInt();
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(new URI(url));
+                return;
+            }
         } catch (Exception e) {
-            return "done";
+            api.logging().logToError("browse failed: " + e);
         }
+        api.logging().logToOutput("라이브 결과 URL (수동으로 열기): " + url);
     }
 }

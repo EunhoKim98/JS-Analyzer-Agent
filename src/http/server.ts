@@ -1,7 +1,8 @@
 import * as http from 'http';
 import * as fs from 'fs';
-import { JobStore, jobView } from './jobs';
+import { JobStore, Job, jobView } from './jobs';
 import { RunOptions } from '../orchestrator/context';
+import { buildLiveHtml } from './live';
 
 export interface ServerOptions {
   port?: number;
@@ -12,10 +13,12 @@ export interface ServerOptions {
 // 로컬 HTTP 잡 서버(M2) — Node 내장 http만 사용(무의존). 엔드포인트:
 //   POST /jobs            {target, provider?, ...RunOptions} → 202 {id}
 //   GET  /jobs/:id        → 잡 상태 + meta
+//   GET  /jobs/:id/events → SSE 스트림 (stage·finding·verdict·done) (D8)
+//   GET  /jobs/:id/live   → 라이브 웹 UI (브라우저 EventSource) (D8)
 //   GET  /jobs/:id/report → 완료 시 report.html
 //   GET  /health          → 200
-// 기본 127.0.0.1 바인딩 + (옵션) Bearer 토큰으로 로컬 격리(R5). 라우팅·요청파싱만
-// 담당하고 실제 분석은 JobStore→runPipeline에 위임한다(SRP).
+// 기본 127.0.0.1 바인딩 + (옵션) Bearer 토큰(헤더 또는 ?token=)으로 로컬 격리(R5).
+// 라우팅·요청파싱·SSE만 담당하고 실제 분석은 JobStore→runPipeline에 위임한다(SRP).
 export class HttpServer {
   constructor(
     private readonly store: JobStore,
@@ -31,25 +34,67 @@ export class HttpServer {
   }
 
   private handle(req: http.IncomingMessage, res: http.ServerResponse): void {
-    if (this.token && req.headers.authorization !== `Bearer ${this.token}`) {
+    const url = new URL(req.url || '/', 'http://localhost');
+    // Token via Authorization header OR ?token= (browser EventSource can't set headers).
+    if (this.token && req.headers.authorization !== `Bearer ${this.token}` && url.searchParams.get('token') !== this.token) {
       return this.send(res, 401, { error: 'unauthorized' });
     }
-    const url = new URL(req.url || '/', 'http://localhost');
     const path = url.pathname;
 
     if (req.method === 'GET' && path === '/health') return this.send(res, 200, { ok: true });
 
     if (req.method === 'POST' && path === '/jobs') return this.createJob(req, res);
 
-    const m = path.match(/^\/jobs\/([^/]+)(\/report)?$/);
+    const m = path.match(/^\/jobs\/([^/]+)(\/(report|events|live))?$/);
     if (req.method === 'GET' && m) {
       const job = this.store.get(m[1]);
       if (!job) return this.send(res, 404, { error: 'job not found' });
-      if (m[2]) return this.serveReport(res, job);
-      return this.send(res, 200, jobView(job));
+      switch (m[3]) {
+        case 'report': return this.serveReport(res, job);
+        case 'events': return this.serveEvents(req, res, job.id);
+        case 'live': return this.serveLive(res, job.id);
+        default: return this.send(res, 200, jobView(job));
+      }
     }
 
     this.send(res, 404, { error: 'not found' });
+  }
+
+  // SSE 스트림(D8) — 버퍼 리플레이 후 라이브 이벤트를 흘린다. done/error 또는 연결 종료 시 정리.
+  private serveEvents(req: http.IncomingMessage, res: http.ServerResponse, id: string): void {
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+    });
+    let done = false;
+    const finish = (s?: { unsubscribe: () => void } | null) => {
+      if (done) return;
+      done = true;
+      s?.unsubscribe();
+      res.end();
+    };
+    const write = (e: unknown) => res.write(`data: ${JSON.stringify(e)}\n\n`);
+    const sub = this.store.subscribe(id, (e) => {
+      write(e);
+      if (e.type === 'done' || e.type === 'error') finish(sub);
+    });
+    if (!sub) {
+      write({ type: 'error', message: 'job not found' });
+      res.end();
+      return;
+    }
+    // Replay buffered events; if the job already finished, close after replay.
+    for (const e of sub.buffered) {
+      write(e);
+      if (e.type === 'done' || e.type === 'error') return finish(sub);
+    }
+    req.on('close', () => finish(sub));
+  }
+
+  private serveLive(res: http.ServerResponse, id: string): void {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(buildLiveHtml(id));
   }
 
   private createJob(req: http.IncomingMessage, res: http.ServerResponse): void {

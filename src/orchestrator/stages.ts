@@ -28,15 +28,9 @@ export class AcquireStage implements PipelineStage {
   constructor(private readonly acquirer: SourceAcquirer) {}
 
   async run(ctx: RunContext): Promise<void> {
-    const res = await this.acquirer.acquire(ctx.opts.target, {
-      browser: ctx.opts.browser,
-      noBrowser: ctx.opts.noBrowser,
-      scopeHosts: ctx.opts.scopeHosts,
-      allHosts: ctx.opts.allHosts,
-      seedFiles: ctx.opts.seedFiles,
-    });
+    const res = await this.acquirer.acquire(ctx.opts.target, { seedFiles: ctx.opts.seedFiles });
     ctx.raw = res.files;
-    ctx.usedBrowser = res.usedBrowser;
+    ctx.acquisition = res.acquisition;
     ctx.targetDir = res.targetDir;
 
     ctx.contentHash = (ctx.raw.map((r) => r.contentHash).join('') || 'empty').slice(0, 16);
@@ -138,13 +132,19 @@ export class AnalyzeStage implements PipelineStage {
       const findings: Finding[] = [];
       await mapLimit(ctx.analyzeSet, ctx.config.concurrency, async (sink) => {
         const slice = this.slicer.around(codeByFile.get(sink.sink.file) || '', sink.sink.line);
-        findings.push(await agent.run({ sink, slice, card: this.rules.byClass(sink.class) }));
+        const finding = await agent.run({ sink, slice, card: this.rules.byClass(sink.class) });
+        findings.push(finding);
+        ctx.emit({ type: 'finding', finding }); // stream as each sink completes (D8)
       });
       ctx.findings = findings;
     } else {
       // static-only mode: emit uncertain findings for human review
       const reason = ctx.opts.noLlm ? '--no-llm' : 'no credentials';
-      ctx.findings = ctx.analyzeSet.map((sink) => AnalyzeAgent.staticFallback(sink, reason));
+      ctx.findings = ctx.analyzeSet.map((sink) => {
+        const finding = AnalyzeAgent.staticFallback(sink, reason);
+        ctx.emit({ type: 'finding', finding });
+        return finding;
+      });
     }
     ctx.store.appendJsonl('findings.jsonl', ctx.findings);
   }
@@ -167,11 +167,13 @@ export class JudgeStage implements PipelineStage {
     const toJudge = ctx.findings.filter((f) => f.verdict !== 'not_vulnerable');
     await mapLimit(toJudge, ctx.config.concurrency, async (f) => {
       const code = codeByFile.get(f.evidence.file) || '';
-      verdicts[f.id] = await agent.run({
+      const verdict = await agent.run({
         finding: f,
         slice: this.slicer.around(code, f.evidence.span[0]),
         fileCode: code,
       });
+      verdicts[f.id] = verdict;
+      ctx.emit({ type: 'verdict', finding_id: f.id, status: verdict.status, verdict }); // D8
     });
     ctx.verdicts = verdicts;
     ctx.store.writeJson('verdicts.json', Object.values(verdicts));
@@ -213,7 +215,7 @@ export class ReportStage implements PipelineStage {
       runId: ctx.runId,
       contentHash: ctx.contentHash,
       timestamp: ctx.timestamp,
-      acquisition: ctx.usedBrowser ? 'browser (playwright)' : 'direct',
+      acquisition: ctx.acquisition,
       files: ctx.files.map((f) => ({ file: f.file, origin: f.origin })),
       llmUsed: ctx.useLlm,
       auth: ctx.config.provider === 'sdk' ? this.auth.describe() : `${ctx.config.provider} (local CLI)`,

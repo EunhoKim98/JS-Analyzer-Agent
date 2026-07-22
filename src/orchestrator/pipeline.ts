@@ -9,7 +9,7 @@ import { HtmlReporter } from '../report/html';
 import { AssetsExporter } from '../report/json';
 import { CodeSlicer } from '../util/slice';
 import { rulesDir, dataDir } from '../util/paths';
-import { RunContext, RunOptions, RunResult } from './context';
+import { RunContext, RunOptions, RunResult, PipelineEvent } from './context';
 import {
   PipelineStage,
   AcquireStage,
@@ -30,15 +30,17 @@ export class Pipeline {
 
   async run(ctx: RunContext): Promise<RunResult> {
     for (const stage of this.stages) {
+      ctx.emit({ type: 'stage', name: stage.name });
       await stage.run(ctx);
     }
+    ctx.emit({ type: 'done', meta: ctx.meta! });
     return { runId: ctx.runId, dir: ctx.store.dir, reportPath: ctx.reportPath, meta: ctx.meta! };
   }
 }
 
 // 합성 루트(Composition Root) — 모든 협력자를 한 곳에서 생성·주입해 파이프라인을 조립한다.
 // 의존성 생성을 여기로 모아 각 클래스는 "무엇을 하는지"에만 집중한다(DIP).
-export function runPipeline(opts: RunOptions): Promise<RunResult> {
+export function runPipeline(opts: RunOptions, onEvent?: (e: PipelineEvent) => void): Promise<RunResult> {
   const config = new ConfigLoader().load(opts.configPath);
   if (opts.maxSinks != null) config.maxSinks = opts.maxSinks;
   if (opts.provider) config.provider = opts.provider;
@@ -58,5 +60,5 @@ export function runPipeline(opts: RunOptions): Promise<RunResult> {
     new ReportStage(auth, new HtmlReporter(), new AssetsExporter()),
   ]);
 
-  return pipeline.run(new RunContext(opts, config));
+  return pipeline.run(new RunContext(opts, config, onEvent));
 }

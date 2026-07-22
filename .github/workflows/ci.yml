@@ -24,9 +24,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Install deps (skip browser download)
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Install deps
         run: npm ci
 
       - name: Typecheck core
